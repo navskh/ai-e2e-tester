@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ai-e2e/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src/**/*"]
+}

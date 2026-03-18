@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@ai-e2e/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src/**/*"]
+}

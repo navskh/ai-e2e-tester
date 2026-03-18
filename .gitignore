@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.turbo/
+data/
+*.db
+.env
+.env.local
+password_input.json
+feedback.md

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Flask body -->
+  <path d="M52 30h24v22l18 36c2 4-1 8-5 8H39c-4 0-7-4-5-8l18-36V30z" fill="none" stroke="white" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Flask top -->
+  <line x1="48" y1="30" x2="80" y2="30" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <!-- Liquid -->
+  <path d="M47 76l9-18h16l9 18c2 4-1 8-5 8H52c-4 0-7-4-5-8z" fill="rgba(255,255,255,0.3)"/>
+  <!-- AI sparkle dots -->
+  <circle cx="96" cy="28" r="4" fill="white" opacity="0.9"/>
+  <circle cx="104" cy="40" r="2.5" fill="white" opacity="0.7"/>
+  <circle cx="88" cy="18" r="2.5" fill="white" opacity="0.7"/>
+</svg>
