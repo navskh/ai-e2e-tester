@@ -4,6 +4,8 @@ export const testRuns = sqliteTable('test_runs', {
   id: text('id').primaryKey(),
   prompt: text('prompt').notNull(),
   setup: text('setup'),
+  scenario: text('scenario'),
+  requestPayload: text('request_payload'),
   status: text('status', { enum: ['pending', 'running', 'paused', 'passed', 'warning', 'failed', 'cancelled'] }).notNull().default('pending'),
   summary: text('summary'),
   startedAt: text('started_at').notNull(),

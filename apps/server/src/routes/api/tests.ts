@@ -3,11 +3,57 @@ import { eq, desc, sql } from 'drizzle-orm';
 import { db, schema } from '../../db/client.js';
 import { testOrchestrator } from '../../services/test-orchestrator.js';
 import { nanoid } from 'nanoid';
+import type { StructuredTestRequest } from '@ai-e2e/shared';
 
 export async function testRoutes(app: FastifyInstance) {
-  // POST /api/tests — submit a new test
+  // POST /api/tests — submit a new test (legacy or structured)
   app.post('/api/tests', async (request, reply) => {
-    const { prompt, setup, options } = request.body as { prompt: string; setup?: string; options?: Record<string, unknown> };
+    const body = request.body as Record<string, unknown>;
+
+    // Structured mode: assertions present
+    if (body.assertions && Array.isArray(body.assertions)) {
+      const { targetUrl, scenario, setup, actions, assertions, options } = body as unknown as StructuredTestRequest;
+
+      if (!targetUrl || typeof targetUrl !== 'string') {
+        return reply.status(400).send({ success: false, error: 'targetUrl is required for structured tests' });
+      }
+      if (!assertions || assertions.length === 0) {
+        return reply.status(400).send({ success: false, error: 'at least one assertion is required' });
+      }
+
+      const structuredRequest: StructuredTestRequest = {
+        targetUrl,
+        scenario: scenario || 'Unnamed test',
+        setup,
+        actions,
+        assertions,
+        options,
+      };
+
+      const id = nanoid();
+      const now = new Date().toISOString();
+
+      await db.insert(schema.testRuns).values({
+        id,
+        prompt: structuredRequest.scenario,
+        setup: setup ?? null,
+        scenario: structuredRequest.scenario,
+        requestPayload: JSON.stringify(structuredRequest),
+        status: 'pending',
+        startedAt: now,
+      });
+
+      // Start structured test in background
+      testOrchestrator.runTest(id, structuredRequest.scenario, undefined, structuredRequest).catch(() => {});
+
+      return reply.status(201).send({
+        success: true,
+        data: { id, scenario: structuredRequest.scenario, status: 'pending', startedAt: now },
+      });
+    }
+
+    // Legacy mode: prompt-based
+    const { prompt, setup, options } = body as { prompt: string; setup?: string; options?: Record<string, unknown> };
 
     if (!prompt || typeof prompt !== 'string') {
       return reply.status(400).send({ success: false, error: 'prompt is required' });

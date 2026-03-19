@@ -8,7 +8,7 @@ import { authStateManager, extractDomain } from './auth-state-manager.js';
 import { sendTestResultEmail } from './mail.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
-import type { ServerMessage } from '@ai-e2e/shared';
+import type { ServerMessage, StructuredTestRequest } from '@ai-e2e/shared';
 
 class TestOrchestrator {
   private runningTests = new Map<string, { agent: AIAgent; cancelled: boolean }>();
@@ -16,11 +16,12 @@ class TestOrchestrator {
   async runTest(
     testRunId: string,
     prompt: string,
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
+    structuredRequest?: StructuredTestRequest,
   ): Promise<void> {
     const startTime = Date.now();
-    const setup = (options?.setup as string) ?? null;
-    const reuseAuth = (options?.reuseAuth as boolean) ?? false;
+    const setup = structuredRequest?.setup ?? (options?.setup as string) ?? null;
+    const reuseAuth = structuredRequest?.options?.reuseAuth ?? (options?.reuseAuth as boolean) ?? false;
 
     // Update status to running
     await db.update(schema.testRuns)
@@ -40,7 +41,8 @@ class TestOrchestrator {
       });
 
       // Check for cached auth state
-      const domain = this.extractDomainFromPrompt(prompt, setup, options?.targetUrl as string);
+      const targetUrl = structuredRequest?.targetUrl ?? options?.targetUrl as string;
+      const domain = this.extractDomainFromPrompt(prompt, setup, targetUrl);
       let cachedState: any = null;
 
       if (reuseAuth && domain) {
@@ -55,8 +57,8 @@ class TestOrchestrator {
       }
 
       await browserManager.createSession(testRunId, {
-        browserType: (options?.browserType as any) ?? 'chromium',
-        headless: options?.headless !== false,
+        browserType: (structuredRequest?.options?.browserType ?? options?.browserType as any) ?? 'chromium',
+        headless: (structuredRequest?.options?.headless ?? options?.headless) !== false,
         ...(cachedState ? { storageState: cachedState } : {}),
       });
 
@@ -120,12 +122,15 @@ class TestOrchestrator {
         onStatus: (status) => {
           this.broadcast(testRunId, { type: 'ai:status', testRunId, status });
         },
-      });
+      }, structuredRequest ? { structuredRequest } : undefined);
 
       this.runningTests.set(testRunId, { agent, cancelled: false });
 
-      // Run AI agent
-      const result = await agent.run(prompt);
+      // Run AI agent — for structured mode, use scenario as prompt
+      const agentPrompt = structuredRequest
+        ? `테스트 실행: ${structuredRequest.scenario}\n대상: ${structuredRequest.targetUrl}`
+        : prompt;
+      const result = await agent.run(agentPrompt);
 
       const durationMs = Date.now() - startTime;
       const status = result.status; // 'passed' | 'warning' | 'failed'
@@ -202,15 +207,18 @@ class TestOrchestrator {
   async startFromWs(
     sessionId: string,
     prompt: string,
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
+    structuredRequest?: StructuredTestRequest,
   ): Promise<string> {
     const id = nanoid();
     const now = new Date().toISOString();
 
     await db.insert(schema.testRuns).values({
       id,
-      prompt,
-      setup: (options?.setup as string) ?? null,
+      prompt: structuredRequest ? structuredRequest.scenario : prompt,
+      setup: structuredRequest?.setup ?? (options?.setup as string) ?? null,
+      scenario: structuredRequest?.scenario ?? null,
+      requestPayload: structuredRequest ? JSON.stringify(structuredRequest) : null,
       status: 'pending',
       startedAt: now,
     });
@@ -218,7 +226,7 @@ class TestOrchestrator {
     sessionStore.setTestRunId(sessionId, id);
 
     // Start in background
-    this.runTest(id, prompt, options).catch(() => {});
+    this.runTest(id, prompt, options, structuredRequest).catch(() => {});
 
     return id;
   }

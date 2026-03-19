@@ -3,12 +3,13 @@ import { nanoid } from 'nanoid';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../db/client.js';
 import { logger } from '../utils/logger.js';
-import { buildSystemPrompt, buildSetupPrompt } from '../ai/system-prompt.js';
+import { buildSystemPrompt, buildSetupPrompt, buildStructuredTestPrompt } from '../ai/system-prompt.js';
 import { config } from '../config.js';
-import { parseVerdict } from '../ai/verdict-parser.js';
+import { parseVerdict, parseAssertionResults } from '../ai/verdict-parser.js';
 import { browserManager } from './browser-manager.js';
+import { sessionStore } from './session-store.js';
 import { createBrowserMcpServer, type StepCounter, type McpBrowserContext } from './mcp-browser-server.js';
-import type { TestResultDetail, StepStats, FailedAtInfo, WarningInfo } from '@ai-e2e/shared';
+import type { TestResultDetail, StepStats, FailedAtInfo, WarningInfo, StructuredTestRequest, AssertionResult } from '@ai-e2e/shared';
 
 interface AgentCallbacks {
   onThinking: (content: string) => void;
@@ -40,6 +41,7 @@ const DISALLOWED_TOOLS = [
 
 interface AgentOptions {
   isSetup?: boolean;
+  structuredRequest?: StructuredTestRequest;
 }
 
 export class AIAgent {
@@ -47,6 +49,7 @@ export class AIAgent {
   private _stepCounter: StepCounter;
   private _mcpCtx: McpBrowserContext | null = null;
   private isSetup: boolean;
+  private structuredRequest: StructuredTestRequest | undefined;
 
   constructor(
     private testRunId: string,
@@ -54,6 +57,7 @@ export class AIAgent {
     options?: AgentOptions,
   ) {
     this.isSetup = options?.isSetup ?? false;
+    this.structuredRequest = options?.structuredRequest;
     this.abortController = new AbortController();
     this._stepCounter = {
       _current: 0,
@@ -71,7 +75,11 @@ export class AIAgent {
   }
 
   async run(prompt: string): Promise<AgentResult> {
-    const systemPrompt = this.isSetup ? buildSetupPrompt() : buildSystemPrompt(this.testRunId);
+    const systemPrompt = this.isSetup
+      ? buildSetupPrompt()
+      : this.structuredRequest
+        ? buildStructuredTestPrompt(this.structuredRequest)
+        : buildSystemPrompt(this.testRunId);
 
     // Save initial user message
     await db.insert(schema.conversations).values({
@@ -214,6 +222,13 @@ export class AIAgent {
     }
 
     const resultText: string = resultMsg.result || lastAssistantText || '';
+
+    // === Structured mode: parse per-assertion results ===
+    if (this.structuredRequest) {
+      return this.determineStructuredResult(resultText, stepStats, failedAt);
+    }
+
+    // === Legacy mode: parse TEST_VERDICT ===
     const verdict = parseVerdict(resultText);
 
     if (verdict) {
@@ -252,6 +267,85 @@ export class AIAgent {
       steps: stepStats,
     };
     return { status: 'failed', summary: JSON.stringify(detail) };
+  }
+
+  /**
+   * Determine result for structured test mode.
+   * Parses per-assertion results from AI output, then computes overall status
+   * using severity rules (server-side, not AI).
+   */
+  private determineStructuredResult(
+    resultText: string,
+    stepStats: StepStats,
+    failedAt: FailedAtInfo | null,
+  ): AgentResult {
+    const request = this.structuredRequest!;
+    const parsed = parseAssertionResults(resultText);
+
+    // Build assertion ID → severity map from request
+    const severityMap = new Map(request.assertions.map(a => [a.id, a.severity]));
+
+    // Map parsed results to AssertionResult, matching severity from request
+    const results: AssertionResult[] = request.assertions.map(reqAssertion => {
+      const found = parsed.find(p => p.id === reqAssertion.id);
+      const result: AssertionResult = {
+        id: reqAssertion.id,
+        status: found ? found.status : 'failed',
+        severity: reqAssertion.severity,
+        detail: found ? found.detail : '검증 결과를 파싱할 수 없음',
+      };
+
+      // Broadcast per-assertion result via WS
+      sessionStore.sendToTestRun(this.testRunId, {
+        type: 'assertion:result',
+        testRunId: this.testRunId,
+        result,
+      });
+
+      return result;
+    });
+
+    // Compute overall status using severity rules
+    const hasCriticalFailure = results.some(r => r.status === 'failed' && r.severity === 'critical');
+    const hasMajorFailure = results.some(r => r.status === 'failed' && r.severity === 'major');
+    const hasMinorFailure = results.some(r => r.status === 'failed' && r.severity === 'minor');
+
+    let status: 'passed' | 'warning' | 'failed';
+    if (hasCriticalFailure) {
+      status = 'failed';
+    } else if (hasMajorFailure) {
+      status = 'warning';
+    } else {
+      status = 'passed';
+    }
+
+    // Build summary
+    const passedCount = results.filter(r => r.status === 'passed').length;
+    const failedCount = results.filter(r => r.status === 'failed').length;
+    const summary = `${request.scenario}: ${passedCount}/${results.length} assertions passed` +
+      (failedCount > 0 ? ` (${failedCount} failed)` : '');
+
+    // Build warnings from minor failures
+    const warnings: WarningInfo[] = results
+      .filter(r => r.status === 'failed' && r.severity === 'minor')
+      .map(r => ({ step: 0, message: `[${r.id}] ${r.detail}` }));
+
+    const detail: TestResultDetail = {
+      status,
+      summary,
+      results,
+      failedAt: status === 'failed' ? failedAt : null,
+      warnings,
+      steps: stepStats,
+    };
+
+    logger.info({
+      testRunId: this.testRunId,
+      status,
+      assertionResults: results.map(r => `${r.id}:${r.status}`),
+    }, 'Structured test result determined');
+
+    return { status, summary: JSON.stringify(detail) };
   }
 
   private async buildStepStats(): Promise<StepStats> {

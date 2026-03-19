@@ -5,6 +5,8 @@ export interface TestRun {
   id: string;
   prompt: string;
   setup: string | null;
+  scenario: string | null;
+  requestPayload: string | null;
   status: TestStatus;
   summary: string | null;
   startedAt: string;
@@ -37,13 +39,46 @@ export interface Conversation {
 export interface TestRunCreateRequest {
   prompt: string;
   setup?: string;
-  options?: {
-    targetUrl?: string;
-    browserType?: 'chromium' | 'firefox' | 'webkit';
-    headless?: boolean;
-    timeout?: number;
-    reuseAuth?: boolean;
-  };
+  options?: TestOptions;
+}
+
+// === Structured Test Protocol ===
+
+export interface Action {
+  type: 'navigate' | 'click' | 'input' | 'scroll' | 'hover' | 'select_option' | 'press_key' | 'wait';
+  target?: string;
+  value?: string;
+}
+
+export interface Assertion {
+  id: string;
+  check: string;
+  severity: 'critical' | 'major' | 'minor';
+}
+
+export interface TestOptions {
+  targetUrl?: string;
+  browserType?: 'chromium' | 'firefox' | 'webkit';
+  headless?: boolean;
+  timeout?: number;
+  reuseAuth?: boolean;
+}
+
+export interface StructuredTestRequest {
+  targetUrl: string;
+  scenario: string;
+  setup?: string;
+  actions?: Action[];
+  assertions: Assertion[];
+  options?: TestOptions;
+}
+
+export interface AssertionResult {
+  id: string;
+  status: 'passed' | 'failed';
+  severity: 'critical' | 'major' | 'minor';
+  detail: string;
+  screenshotUrl?: string;
 }
 
 export interface FailedAtInfo {
@@ -70,6 +105,7 @@ export interface StepStats {
 export interface TestResultDetail {
   status: 'passed' | 'warning' | 'failed';
   summary: string;
+  results?: AssertionResult[];
   failedAt: FailedAtInfo | null;
   warnings: WarningInfo[];
   steps: StepStats;

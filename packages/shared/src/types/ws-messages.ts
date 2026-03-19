@@ -1,4 +1,4 @@
-import type { TestStep, TestStatus } from './test-run.js';
+import type { TestStep, TestStatus, AssertionResult, Action, Assertion, TestOptions } from './test-run.js';
 
 // Server → Client messages
 export type ServerMessage =
@@ -11,11 +11,13 @@ export type ServerMessage =
   | { type: 'ai:tool_call'; testRunId: string; command: string }
   | { type: 'ai:status'; testRunId: string; status: string }
   | { type: 'ai:clarification'; testRunId: string; questionId: string; question: string }
+  | { type: 'assertion:result'; testRunId: string; result: AssertionResult }
   | { type: 'test:completed'; testRunId: string; status: TestStatus; summary: string | null }
   | { type: 'error'; message: string };
 
 // Client → Server messages
 export type ClientMessage =
   | { type: 'test:start'; prompt: string; setup?: string; options?: { targetUrl?: string; browserType?: string; headless?: boolean; timeout?: number; reuseAuth?: boolean } }
+  | { type: 'test:start:structured'; targetUrl: string; scenario: string; setup?: string; actions?: Action[]; assertions: Assertion[]; options?: TestOptions }
   | { type: 'test:cancel'; testRunId: string }
   | { type: 'clarification:response'; testRunId: string; questionId: string; answer: string };

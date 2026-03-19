@@ -50,3 +50,49 @@ export function parseVerdict(text: string): Verdict | null {
 
   return { verdict, reason, warnings };
 }
+
+/**
+ * Parsed assertion result from structured test output.
+ */
+export interface ParsedAssertionResult {
+  id: string;
+  status: 'passed' | 'failed';
+  detail: string;
+}
+
+/**
+ * Parse per-assertion results from structured test AI output.
+ *
+ * Expected format (repeating):
+ *   ASSERTION_RESULT: A1 PASS
+ *   DETAIL: 설명
+ *
+ *   ASSERTION_RESULT: A2 FAIL
+ *   DETAIL: 실패 근거
+ *
+ *   TEST_COMPLETE
+ */
+export function parseAssertionResults(text: string): ParsedAssertionResult[] {
+  const results: ParsedAssertionResult[] = [];
+
+  // Match all ASSERTION_RESULT blocks
+  const pattern = /ASSERTION_RESULT:\s*(\S+)\s+(PASS|FAIL)\s*\nDETAIL:\s*(.+)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    results.push({
+      id: match[1]!,
+      status: match[2]!.toUpperCase() === 'PASS' ? 'passed' : 'failed',
+      detail: match[3]!.trim(),
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Check if the structured test output contains the TEST_COMPLETE marker.
+ */
+export function hasTestComplete(text: string): boolean {
+  return /TEST_COMPLETE/i.test(text);
+}

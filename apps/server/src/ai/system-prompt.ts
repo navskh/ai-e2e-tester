@@ -80,6 +80,84 @@ REASON: [1-2 sentence explanation of what failed]
 - Multiple minor issues with core functionality intact = WARNING`;
 }
 
+export function buildStructuredTestPrompt(request: {
+  targetUrl: string;
+  scenario: string;
+  actions?: { type: string; target?: string; value?: string }[];
+  assertions: { id: string; check: string; severity: string }[];
+}): string {
+  // Build actions section
+  let actionsSection = '';
+  if (request.actions && request.actions.length > 0) {
+    const actionLines = request.actions.map((a, i) => {
+      const parts = [`${i + 1}. [${a.type}]`];
+      if (a.target) parts.push(a.target);
+      if (a.value) parts.push(`"${a.value}"`);
+      return parts.join(' ');
+    }).join('\n');
+    actionsSection = `
+### Phase 2: Actions (execute in order)
+${actionLines}
+`;
+  }
+
+  // Build assertions section
+  const assertionLines = request.assertions.map(a =>
+    `- ${a.id} [${a.severity}]: ${a.check}`
+  ).join('\n');
+
+  return `You are an expert QA engineer performing a structured E2E test.
+
+## Test: ${request.scenario}
+
+### Phase 1: Navigate
+Navigate to ${request.targetUrl}
+${actionsSection}
+### Phase ${request.actions && request.actions.length > 0 ? '3' : '2'}: Assertions (verify EACH one individually)
+${assertionLines}
+
+## Selector Formats
+- \`text=Submit\` — by visible text
+- \`role=button[name="Submit"]\` — by ARIA role
+- \`[data-testid="login-btn"]\` — by test ID
+- \`#email\` — by ID
+- \`.btn-primary\` — by class
+- \`input[type="email"]\` — by attribute
+
+## Text Verification Rules
+- NEVER judge text content from screenshots alone. Screenshots can cause OCR-like misreading.
+- To verify text: ALWAYS use \`get_text\` to extract DOM textContent, then use \`assert_text\` for comparison.
+- Use screenshots ONLY for visual layout verification (element position, visibility, color).
+
+## Rules
+- ALWAYS take a screenshot at the start (after navigating to the target URL)
+- Execute ALL actions first in order, then verify EACH assertion individually
+- Use \`snapshot\` before interacting to find the right selectors
+- For each assertion, use appropriate tools (snapshot, get_text, assert_text, assert_visible)
+- 따옴표 텍스트는 DOM textContent에서 정확 매칭
+- If an assertion fails, continue verifying remaining assertions — do NOT stop early!
+- Take a screenshot after completing all assertions
+
+## Output Format (MANDATORY)
+For EACH assertion, you MUST output exactly this format:
+
+ASSERTION_RESULT: {id} {PASS|FAIL}
+DETAIL: {근거 설명 — 어떤 도구를 사용해서 무엇을 확인했는지}
+
+After ALL assertions have been verified, output exactly:
+
+TEST_COMPLETE
+
+Example:
+ASSERTION_RESULT: A1 PASS
+DETAIL: assert_visible로 통계 카드 4개 표시 확인
+
+ASSERTION_RESULT: A2 FAIL
+DETAIL: 3열 그리드가 아닌 2열 그리드로 표시됨
+
+TEST_COMPLETE`;
+}
+
 export function buildSetupPrompt(): string {
   return `You are performing a setup/login operation on a web application.
 Your ONLY goal is to complete the login or setup steps described below.

@@ -7,3 +7,9 @@ data/
 .env.local
 password_input.json
 feedback.md
+
+# Build outputs in source
+packages/shared/src/**/*.js
+packages/shared/src/**/*.js.map
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.d.ts.map

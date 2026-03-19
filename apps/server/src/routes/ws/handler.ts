@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { nanoid } from 'nanoid';
-import type { ClientMessage } from '@ai-e2e/shared';
+import type { ClientMessage, StructuredTestRequest } from '@ai-e2e/shared';
 import { sessionStore } from '../../services/session-store.js';
 import { testOrchestrator } from '../../services/test-orchestrator.js';
 import { logger } from '../../utils/logger.js';
@@ -23,6 +23,24 @@ export async function wsRoutes(app: FastifyInstance) {
               sessionId,
               message.prompt,
               wsOptions,
+            );
+            sessionStore.setTestRunId(sessionId, testRunId);
+            break;
+          }
+          case 'test:start:structured': {
+            const structuredRequest: StructuredTestRequest = {
+              targetUrl: message.targetUrl,
+              scenario: message.scenario,
+              setup: message.setup,
+              actions: message.actions,
+              assertions: message.assertions,
+              options: message.options,
+            };
+            const testRunId = await testOrchestrator.startFromWs(
+              sessionId,
+              structuredRequest.scenario,
+              undefined,
+              structuredRequest,
             );
             sessionStore.setTestRunId(sessionId, testRunId);
             break;
