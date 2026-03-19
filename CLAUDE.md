@@ -11,7 +11,7 @@
 - [API 스펙](docs/api.md) — REST API, WebSocket, 요청/응답 형식
 - [테스트 판정 규칙](docs/verdict-rules.md) — PASS/FAIL 판정 로직, assertion 동작
 - [인증 캐싱 (setup + reuseAuth)](docs/auth-caching.md) — 로그인 자동화, storageState 재사용
-- [MCP 브라우저 도구](docs/mcp-tools.md) — 18개 도구 목록, 파라미터, 반환값
+- [MCP 브라우저 도구](docs/mcp-tools.md) — 23개 도구 목록, 파라미터, 반환값
 - [실행 및 배포](docs/running.md) — 개발/PM2/ngrok 실행 방법
 
 ## 주의사항

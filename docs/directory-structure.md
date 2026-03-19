@@ -7,14 +7,14 @@ ai-e2e-tester/
 │   │   ├── ai/                        # AI 관련 모듈
 │   │   │   ├── system-prompt.ts       # 테스트/setup 시스템 프롬프트
 │   │   │   ├── verdict-parser.ts      # TEST_VERDICT 파싱 유틸리티
-│   │   │   ├── context-builder.ts     # 접근성 트리 추출 (snapshot용)
+│   │   │   ├── context-builder.ts     # 접근성 트리 + ref 맵 생성 (snapshot용)
 │   │   │   └── tools/                 # [레거시] 미사용, 삭제 금지
 │   │   │
 │   │   ├── services/                  # 핵심 서비스
 │   │   │   ├── ai-agent.ts            # Claude Code SDK query() 래퍼
-│   │   │   ├── mcp-browser-server.ts  # MCP 브라우저 도구 서버 (18개 도구)
+│   │   │   ├── mcp-browser-server.ts  # MCP 브라우저 도구 서버 (23개 도구)
 │   │   │   ├── test-orchestrator.ts   # 테스트 라이프사이클 관리
-│   │   │   ├── browser-manager.ts     # Playwright 세션 생성/종료
+│   │   │   ├── browser-manager.ts     # Playwright 세션 생성/종료 + 콘솔/네트워크 모니터링
 │   │   │   ├── auth-state-manager.ts  # storageState 캐싱/복원/만료
 │   │   │   ├── session-store.ts       # WS 세션 + clarification 관리
 │   │   │   └── mail.ts               # 이메일 알림 (nodemailer)

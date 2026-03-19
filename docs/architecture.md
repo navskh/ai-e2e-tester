@@ -24,8 +24,9 @@ TestOrchestrator
     │     │     → Anthropic API와 통신
     │     │
     │     └── MCP Browser Server (인프로세스)
-    │           └── 18개 브라우저 도구
+    │           └── 23개 브라우저 도구
     │               → Playwright Page 직접 조작
+    │               → ref 기반 요소 타겟팅 (data-ete-ref 속성)
     │               → 결과: text + image(base64 스크린샷)
     │
     ├── SessionStore
