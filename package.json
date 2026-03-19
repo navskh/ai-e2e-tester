@@ -7,7 +7,8 @@
     "build": "turbo run build",
     "dev:server": "turbo run dev --filter=@ai-e2e/server",
     "dev:web": "turbo run dev --filter=@ai-e2e/web",
-    "db:push": "turbo run db:push --filter=@ai-e2e/server"
+    "db:push": "turbo run db:push --filter=@ai-e2e/server",
+    "deploy": "git pull && turbo run build --filter=@ai-e2e/shared && turbo run build --filter=@ai-e2e/web && pm2 restart ai-e2e-tester"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
