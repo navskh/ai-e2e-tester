@@ -31,6 +31,8 @@ const ALLOWED_TOOLS = [
   'get_text', 'get_attribute',
   'wait_for_element', 'wait',
   'ask_user', 'go_back', 'reload',
+  'inspect', 'get_computed_style', 'get_bounding_box',
+  'console_messages', 'network_requests',
 ].map(t => `${MCP_TOOL_PREFIX}${t}`);
 
 const DISALLOWED_TOOLS = [
@@ -105,6 +107,7 @@ export class AIAgent {
         assertionExecuted: false,
         hasAssertionFailure: false,
         assertionFailures: [],
+        lastRefMap: [],
       };
       this._mcpCtx = mcpCtx;
 
