@@ -93,6 +93,7 @@ export class AIAgent {
     });
 
     let lastAssistantText = '';
+    const allAssistantTexts: string[] = [];
 
     try {
       this.callbacks.onStatus('AI 에이전트 시작 중...');
@@ -147,6 +148,7 @@ export class AIAgent {
               const text = (block as any).text;
               if (text) {
                 lastAssistantText = text;
+                allAssistantTexts.push(text);
                 this.callbacks.onThinking(text);
 
                 await db.insert(schema.conversations).values({
@@ -175,7 +177,7 @@ export class AIAgent {
         }
 
         if (message.type === 'result') {
-          return await this.determineResult(message as any, lastAssistantText);
+          return await this.determineResult(message as any, lastAssistantText, allAssistantTexts);
         }
       }
 
@@ -199,7 +201,7 @@ export class AIAgent {
     }
   }
 
-  private async determineResult(resultMsg: any, lastAssistantText: string): Promise<AgentResult> {
+  private async determineResult(resultMsg: any, lastAssistantText: string, allAssistantTexts: string[] = []): Promise<AgentResult> {
     const stepStats = await this.buildStepStats();
     const firstFailure = this._mcpCtx?.assertionFailures[0] ?? null;
     const failedAt: FailedAtInfo | null = firstFailure ? {
@@ -211,9 +213,20 @@ export class AIAgent {
       screenshotUrl: firstFailure.screenshotUrl,
     } : null;
 
-    // error_max_turns or error_during_execution → always FAIL
+    // error_max_turns or error_during_execution
     if (resultMsg.subtype !== 'success') {
       logger.info({ testRunId: this.testRunId, subtype: resultMsg.subtype }, 'Test ended with non-success subtype');
+
+      // For structured mode, still try to parse results from all conversation
+      if (this.structuredRequest && allAssistantTexts.length > 0) {
+        const allText = allAssistantTexts.join('\n');
+        const partialParsed = parseAssertionResults(allText);
+        if (partialParsed.length > 0) {
+          logger.info({ testRunId: this.testRunId, parsed: partialParsed.length }, 'Recovered partial assertion results from truncated conversation');
+          return this.determineStructuredResult(allText, stepStats, failedAt);
+        }
+      }
+
       const detail: TestResultDetail = {
         status: 'failed',
         summary: lastAssistantText || `Test incomplete: ${resultMsg.subtype}`,
@@ -228,7 +241,11 @@ export class AIAgent {
 
     // === Structured mode: parse per-assertion results ===
     if (this.structuredRequest) {
-      return this.determineStructuredResult(resultText, stepStats, failedAt);
+      // Collect all assistant text for parsing (not just last message)
+      const allText = allAssistantTexts.length > 0
+        ? allAssistantTexts.join('\n')
+        : resultText;
+      return this.determineStructuredResult(allText, stepStats, failedAt);
     }
 
     // === Legacy mode: parse TEST_VERDICT ===
@@ -283,7 +300,14 @@ export class AIAgent {
     failedAt: FailedAtInfo | null,
   ): AgentResult {
     const request = this.structuredRequest!;
-    const parsed = parseAssertionResults(resultText);
+    const rawParsed = parseAssertionResults(resultText);
+
+    // Deduplicate by assertion id (last occurrence wins)
+    const deduped = new Map<string, typeof rawParsed[0]>();
+    for (const result of rawParsed) {
+      deduped.set(result.id, result);
+    }
+    const parsed = Array.from(deduped.values());
 
     // Build assertion ID → severity map from request
     const severityMap = new Map(request.assertions.map(a => [a.id, a.severity]));

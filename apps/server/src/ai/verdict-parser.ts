@@ -75,8 +75,8 @@ export interface ParsedAssertionResult {
 export function parseAssertionResults(text: string): ParsedAssertionResult[] {
   const results: ParsedAssertionResult[] = [];
 
-  // Match all ASSERTION_RESULT blocks
-  const pattern = /ASSERTION_RESULT:\s*(\S+)\s+(PASS|FAIL)\s*\nDETAIL:\s*(.+)/gi;
+  // Primary pattern: ASSERTION_RESULT + DETAIL on next line (flexible whitespace/newlines)
+  const pattern = /ASSERTION_RESULT:\s*(\S+)\s+(PASS|FAIL)\s*[\n\r]+\s*DETAIL:\s*(.+)/gi;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -85,6 +85,18 @@ export function parseAssertionResults(text: string): ParsedAssertionResult[] {
       status: match[2]!.toUpperCase() === 'PASS' ? 'passed' : 'failed',
       detail: match[3]!.trim(),
     });
+  }
+
+  // Fallback: DETAIL missing or single-line format
+  if (results.length === 0) {
+    const fallbackPattern = /ASSERTION_RESULT:\s*(\S+)\s+(PASS|FAIL)(?:\s*[-:]\s*(.+))?/gi;
+    while ((match = fallbackPattern.exec(text)) !== null) {
+      results.push({
+        id: match[1]!,
+        status: match[2]!.toUpperCase() === 'PASS' ? 'passed' : 'failed',
+        detail: match[3]?.trim() ?? '',
+      });
+    }
   }
 
   return results;

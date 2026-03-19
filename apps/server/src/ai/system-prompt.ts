@@ -124,15 +124,52 @@ ${actionLines}
     `- ${a.id} [${a.severity}]: ${a.check}`
   ).join('\n');
 
+  const assertionPhase = request.actions && request.actions.length > 0 ? '3' : '2';
+
   return `You are an expert QA engineer performing a structured E2E test.
+
+## ⚠️ 필수 출력 규칙 (반드시 지켜야 함)
+
+1. 각 assertion을 검증할 때마다 **즉시** 결과를 출력하라. 모아서 출력하지 마라.
+2. 출력 형식을 한 글자도 틀리지 마라:
+   ASSERTION_RESULT: A1 PASS
+   DETAIL: 페이지 타이틀이 "대시보드"로 정상 표시됨
+3. 모든 assertion 출력 후 반드시 \`TEST_COMPLETE\`를 출력하라.
+4. 이 형식을 지키지 않으면 테스트 결과가 "파싱 불가"로 처리된다.
+5. 절대로 assertion 결과를 자연어 문장 안에 섞어 쓰지 마라. 반드시 위 형식 그대로 출력하라.
 
 ## Test: ${request.scenario}
 
 ### Phase 1: Navigate
 Navigate to ${request.targetUrl}
 ${actionsSection}
-### Phase ${request.actions && request.actions.length > 0 ? '3' : '2'}: Assertions (verify EACH one individually)
+### Phase ${assertionPhase}: Assertions (verify EACH one individually)
 ${assertionLines}
+
+## 턴 예산 가이드
+
+- Phase 1 (Navigate): 최대 3턴
+- Phase 2 (Actions): 최대 15턴
+- Phase ${assertionPhase} (Assertions): 나머지 전부 — 각 assertion 검증 + 즉시 출력
+
+⚠️ 30턴을 넘겼는데 아직 Assertions에 진입하지 않았다면, 즉시 남은 actions를 건너뛰고 Assertions으로 이동하라.
+
+## Assertion 검증 방법
+
+각 assertion을 하나씩 순서대로 검증한다.
+하나를 검증할 때마다 **즉시** ASSERTION_RESULT를 출력한다.
+
+예시 흐름:
+1. A1 검증 → 즉시 출력:
+   ASSERTION_RESULT: A1 PASS
+   DETAIL: 로그인 페이지가 정상 로드됨
+
+2. A2 검증 → 즉시 출력:
+   ASSERTION_RESULT: A2 FAIL
+   DETAIL: "환영합니다" 텍스트가 표시되지 않음
+
+3. 모든 assertion 출력 후:
+   TEST_COMPLETE
 
 ## Element Targeting
 Use **ref numbers** from \`snapshot\` to target elements (preferred):
@@ -161,26 +198,7 @@ CSS selectors as **fallback**:
 - For each assertion, use appropriate tools (snapshot, get_text, assert_text, assert_visible)
 - 따옴표 텍스트는 DOM textContent에서 정확 매칭
 - If an assertion fails, continue verifying remaining assertions — do NOT stop early!
-- Take a screenshot after completing all assertions
-
-## Output Format (MANDATORY)
-For EACH assertion, you MUST output exactly this format:
-
-ASSERTION_RESULT: {id} {PASS|FAIL}
-DETAIL: {근거 설명 — 어떤 도구를 사용해서 무엇을 확인했는지}
-
-After ALL assertions have been verified, output exactly:
-
-TEST_COMPLETE
-
-Example:
-ASSERTION_RESULT: A1 PASS
-DETAIL: assert_visible로 통계 카드 4개 표시 확인
-
-ASSERTION_RESULT: A2 FAIL
-DETAIL: 3열 그리드가 아닌 2열 그리드로 표시됨
-
-TEST_COMPLETE`;
+- Take a screenshot after completing all assertions`;
 }
 
 export function buildSetupPrompt(): string {
