@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { ServerMessage } from '@ai-e2e/shared';
+import type { ServerMessage, Action, Assertion } from '@ai-e2e/shared';
 import { useTestSession } from '../stores/test-session';
 import { useWebSocket } from './useWebSocket';
 
@@ -54,6 +54,24 @@ export function useTestExecution() {
     store.startTest('pending', prompt);
   }, [send, store]);
 
+  const startStructuredTest = useCallback((data: {
+    targetUrl: string;
+    scenario: string;
+    setup?: string;
+    actions?: Action[];
+    assertions: Assertion[];
+  }) => {
+    send({
+      type: 'test:start:structured',
+      targetUrl: data.targetUrl,
+      scenario: data.scenario,
+      setup: data.setup,
+      actions: data.actions,
+      assertions: data.assertions,
+    });
+    store.startTest('pending', `[구조화] ${data.scenario}`);
+  }, [send, store]);
+
   const cancelTest = useCallback((testRunId: string) => {
     send({ type: 'test:cancel', testRunId });
   }, [send]);
@@ -69,6 +87,7 @@ export function useTestExecution() {
     connected,
     // Actions (override store's raw actions with WebSocket-aware versions)
     startTest,
+    startStructuredTest,
     cancelTest,
     answerClarification,
     reset: store.reset,

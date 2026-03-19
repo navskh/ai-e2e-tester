@@ -33,6 +33,11 @@ const toolLabels: Record<string, string> = {
   wait_for_element: '요소 대기',
   wait: '대기',
   ask_user: '질문',
+  inspect: '요소 검사',
+  get_computed_style: 'CSS 조회',
+  get_bounding_box: '위치 조회',
+  console_messages: '콘솔 조회',
+  network_requests: '네트워크 조회',
 };
 
 const statusIcons: Record<string, { icon: React.ElementType; color: string }> = {
@@ -108,12 +113,17 @@ function StepItem({ step }: { step: StepInfo }) {
 function formatInputShort(tool: string, input: Record<string, unknown>): string {
   switch (tool) {
     case 'navigate': return String(input.url ?? '');
-    case 'click': return String(input.selector ?? '');
-    case 'type_text': return `"${input.text}" → ${input.selector}`;
+    case 'click': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
+    case 'type_text': return `"${input.text}" → ${input.ref !== undefined ? `ref=${input.ref}` : input.selector}`;
     case 'assert_text': return `"${input.expected}"`;
-    case 'assert_visible': return String(input.selector ?? '');
+    case 'assert_visible': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
     case 'assert_url': return String(input.expected ?? '');
-    case 'wait_for_element': return String(input.selector ?? '');
+    case 'wait_for_element': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
+    case 'inspect': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
+    case 'get_computed_style': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
+    case 'get_bounding_box': return String(input.ref !== undefined ? `ref=${input.ref}` : input.selector ?? '');
+    case 'console_messages': return String(input.level ?? 'all');
+    case 'network_requests': return String(input.urlPattern || input.statusFilter || 'all');
     case 'press_key': return String(input.key ?? '');
     case 'ask_user': return String(input.question ?? '');
     default: {
