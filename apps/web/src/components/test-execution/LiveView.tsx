@@ -3,6 +3,7 @@ import { StepLog } from './StepLog';
 import { ScreenshotViewer } from './ScreenshotViewer';
 import { ActivityFeed } from './ActivityFeed';
 import { ConversationPanel } from '../test-input/ConversationPanel';
+import { TestSummary } from './TestSummary';
 import { Markdown } from '../common/Markdown';
 import { CheckCircle2, XCircle, Loader2, StopCircle } from 'lucide-react';
 
@@ -88,16 +89,7 @@ export function LiveView() {
 
       {/* 요약 */}
       {summary && (
-        <div className={`p-4 rounded-lg border ${
-          status === 'passed'
-            ? 'bg-green-900/10 border-green-800/30'
-            : 'bg-red-900/10 border-red-800/30'
-        }`}>
-          <h3 className="text-sm font-medium mb-1">
-            {status === 'passed' ? '테스트 통과' : '테스트 실패'}
-          </h3>
-          <Markdown>{summary}</Markdown>
-        </div>
+        <TestSummary summary={summary} status={status} />
       )}
 
       {/* 메인 콘텐츠 - 3컬럼 */}
