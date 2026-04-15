@@ -11,6 +11,7 @@ const statusConfig = {
   running: { icon: Loader2, color: 'text-blue-400', bg: 'bg-blue-400/10' },
   paused: { icon: Clock, color: 'text-orange-400', bg: 'bg-orange-400/10' },
   passed: { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-400/10' },
+  warning: { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
   failed: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
   cancelled: { icon: XCircle, color: 'text-gray-400', bg: 'bg-gray-400/10' },
 };

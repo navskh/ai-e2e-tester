@@ -3,12 +3,12 @@
   "private": true,
   "packageManager": "pnpm@10.30.1",
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "dev:server": "turbo run dev --filter=@ai-e2e/server",
-    "dev:web": "turbo run dev --filter=@ai-e2e/web",
-    "db:push": "turbo run db:push --filter=@ai-e2e/server",
-    "deploy": "git pull && turbo run build --filter=@ai-e2e/shared && turbo run build --filter=@ai-e2e/web && pm2 restart ai-e2e-tester"
+    "dev": "npx turbo run dev",
+    "build": "npx turbo run build",
+    "dev:server": "npx turbo run dev --filter=@ai-e2e/server",
+    "dev:web": "npx turbo run dev --filter=@ai-e2e/web",
+    "db:push": "npx turbo run db:push --filter=@ai-e2e/server",
+    "deploy": "git pull && npx turbo run build --filter=@ai-e2e/shared && npx turbo run build --filter=@ai-e2e/web && pm2 restart ai-e2e-tester"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

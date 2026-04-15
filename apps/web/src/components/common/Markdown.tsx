@@ -7,8 +7,8 @@ interface Props {
 
 export function Markdown({ children, className = '' }: Props) {
   return (
+    <div className={`markdown-body ${className}`}>
     <ReactMarkdown
-      className={`markdown-body ${className}`}
       components={{
         h1: ({ children }) => <h1 className="text-lg font-bold text-gray-200 mt-4 mb-2">{children}</h1>,
         h2: ({ children }) => <h2 className="text-base font-semibold text-gray-200 mt-3 mb-1.5">{children}</h2>,
@@ -56,5 +56,6 @@ export function Markdown({ children, className = '' }: Props) {
     >
       {children}
     </ReactMarkdown>
+    </div>
   );
 }
